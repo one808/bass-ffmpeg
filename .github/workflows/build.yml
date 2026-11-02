@@ -1,0 +1,82 @@
+# Build bass-ffmpeg.dll on GitHub Actions: cross toolchain + lean static FFmpeg
+# (XP target) + the plugin, then audit the result for XP compatibility.
+name: build bass-ffmpeg
+
+run-name: "bass-ffmpeg · static"
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write # for the 'latest' release upload
+
+concurrency:
+  group: bass-ffmpeg-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355 # toolchain build is slow on the first run (~40min), cached after
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout ffmpeg-windows-build-helpers (toolchain recipe + XP patches)
+        uses: actions/checkout@v4
+        with:
+          repository: one808/ffmpeg-windows-build-helpers
+          ref: xp-core2
+          path: build-helpers
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            autoconf automake bison bzip2 cmake curl cvs ed flex g++ gcc git gperf libtool \
+            libtool-bin make texinfo patch pax pkg-config python3 subversion unzip wget \
+            xz-utils yasm nasm meson ninja-build gettext autopoint ca-certificates p7zip-full
+
+      - name: Restore build sandbox (toolchain + deps + FFmpeg, rolling cache)
+        uses: actions/cache/restore@v4
+        with:
+          path: sandbox
+          key: sandbox-${{ hashFiles('scripts/build-ffmpeg.sh', 'scripts/gen-component-lists.py') }}
+          restore-keys: |
+            sandbox-
+
+      - name: Build toolchain + FFmpeg
+        run: bash scripts/build-ffmpeg.sh
+
+      - name: Build plugin
+        run: bash scripts/build-plugin.sh
+
+      - name: XP compatibility audit
+        run: bash scripts/check-xp-compat.sh build/bass-ffmpeg.dll
+
+      - name: Save build sandbox
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: sandbox
+          key: sandbox-${{ hashFiles('scripts/build-ffmpeg.sh', 'scripts/gen-component-lists.py') }}-${{ github.run_id }}
+
+      - name: Upload plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: bass-ffmpeg
+          path: |
+            build/bass-ffmpeg.dll
+            README.md
+          retention-days: 30
+
+      - name: Publish "latest" release (moving tag)
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: *** github.token }}
+        run: |
+          gh release delete latest -y --repo "$GITHUB_REPOSITORY" 2>/dev/null || true
+          gh release create latest build/bass-ffmpeg.dll README.md --repo "$GITHUB_REPOSITORY" \
+            --title "bass-ffmpeg (latest build)" \
+            --notes "Auto-built by GitHub Actions. bass-ffmpeg.dll is a BASS 2.4 add-on; all FFmpeg libraries are linked statically - bass.dll (the host) is the only dependency."
