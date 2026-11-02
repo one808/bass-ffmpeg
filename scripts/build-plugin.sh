@@ -11,7 +11,7 @@ export PATH=$CROSS/bin:$PATH
 mkdir -p build
 
 echo "== building bass.dll import library =="
-$TRIPLE-dlltool -d bass-sdk/bass.def -l build/libbass.a -D bass.dll -k
+$TRIPLE-dlltool -d bass-sdk/bass.def -l build/libbass.a -D bass.dll -k && $TRIPLE-nm build/libbass.a | grep -c BASS_GetVersion
 
 echo "== compiling bass-ffmpeg.cpp =="
 $TRIPLE-g++ $CFLAGS_XP -Os -fno-exceptions -fno-rtti \

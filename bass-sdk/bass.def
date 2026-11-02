@@ -1,8 +1,10 @@
 ; Import library definition for bass.dll - only the few BASS functions this
-; plugin calls. Generate with: dlltool -d bass.def -l libbass.a -D bass.dll -k
+; plugin calls. Entries are stdcall-decorated as the compiler emits them;
+; dlltool -k strips the "@N" for the actual DLL export lookup.
+; Generate with: dlltool -d bass.def -l libbass.a -D bass.dll -k
 LIBRARY bass.dll
 EXPORTS
-	BASS_GetVersion
-	BASS_GetConfigPtr
-	BASS_ErrorGetCode
-	BASS_StreamFree
+	BASS_GetVersion@0
+	BASS_GetConfigPtr@4
+	BASS_ErrorGetCode@0
+	BASS_StreamFree@4
