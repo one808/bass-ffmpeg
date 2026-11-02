@@ -74,7 +74,7 @@ jobs:
       - name: Publish "latest" release (moving tag)
         if: success() && github.ref == 'refs/heads/main'
         env:
-          GH_TOKEN: *** github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest -y --repo "$GITHUB_REPOSITORY" 2>/dev/null || true
           gh release create latest build/bass-ffmpeg.dll README.md --repo "$GITHUB_REPOSITORY" \
