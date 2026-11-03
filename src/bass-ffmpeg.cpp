@@ -90,8 +90,14 @@ static void FreeFF(FFMPEGSTREAM *stream)
 {
 	if (stream->swr) swr_free(&stream->swr);
 	if (stream->dec) avcodec_free_context(&stream->dec);
-	if (stream->fmt) avformat_close_input(&stream->fmt); // CUSTOM_IO: ours stays
-	if (stream->io) avio_context_free(&stream->io);
+	if (stream->fmt) avformat_close_input(&stream->fmt); // CUSTOM_IO: does not free our AVIO
+	if (stream->io) {
+		// avio_context_free does NOT free the IO buffer - and avio may have
+		// reallocated it, so free io->buffer (per the official avio_read_callback
+		// example). Without this, every file open/close leaks 64KB.
+		av_freep(&stream->io->buffer);
+		avio_context_free(&stream->io);
+	}
 	if (stream->frame) av_frame_free(&stream->frame);
 	if (stream->pkt) av_packet_free(&stream->pkt);
 	free(stream->staging);
