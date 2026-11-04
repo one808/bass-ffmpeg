@@ -55,7 +55,16 @@ on every push, or manually via *Run workflow*:
 5. **XP audit** (`scripts/check-xp-compat.sh`): PE subsystem ≤ 5.1, no known
    Vista+-only imports, and no non-system DLL dependencies beyond `bass.dll`.
 
-The artifact from the workflow is the finished `bass-ffmpeg.dll`.
+The artifact from the workflow is the finished `bass-ffmpeg.dll`, in a
+versioned package (`bass-ffmpeg-<version>`).
+
+## Releases & updates
+
+The version lives in the `VERSION` file (single source of truth) and is
+embedded into the DLL as a standard Windows **VERSIONINFO resource**. Every
+successful `main` build publishes an **add-only** GitHub Release (existing
+releases are never modified): tag `v<version>`, or `v<version>.<run>` when
+that version already has a release.
 
 Local build (Linux with the same apt packages as the workflow):
 
