@@ -62,21 +62,38 @@ jobs:
           path: sandbox
           key: sandbox-${{ hashFiles('scripts/build-ffmpeg.sh', 'scripts/gen-component-lists.py') }}-${{ github.run_id }}
 
+      - name: Read version
+        if: success()
+        id: ver
+        run: |
+          VER=$(tr -d ' \n' < VERSION)
+          echo "ver=$VER" >> "$GITHUB_OUTPUT"
+
       - name: Upload plugin
         uses: actions/upload-artifact@v4
         with:
-          name: bass-ffmpeg
+          name: bass-ffmpeg-${{ steps.ver.outputs.ver }}
           path: |
             build/bass-ffmpeg.dll
             README.md
           retention-days: 30
 
-      - name: Publish "latest" release (moving tag)
+      - name: Publish GitHub Release (add-only, never touches old releases)
         if: success() && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete latest -y --repo "$GITHUB_REPOSITORY" 2>/dev/null || true
-          gh release create latest build/bass-ffmpeg.dll README.md --repo "$GITHUB_REPOSITORY" \
-            --title "bass-ffmpeg (latest build)" \
-            --notes "Auto-built by GitHub Actions. bass-ffmpeg.dll is a BASS 2.4 add-on; all FFmpeg libraries are linked statically - bass.dll (the host) is the only dependency."
+          VER=${{ steps.ver.outputs.ver }}
+          RUN=${{ github.run_number }}
+          7z a "bass-ffmpeg-$VER.zip" build/bass-ffmpeg.dll README.md
+          # ADD-ONLY: never delete/modify existing releases. Tag = v<version>,
+          # or v<version>.<run> when that version already has a release.
+          TAG="v$VER"
+          TITLE="bass-ffmpeg $VER"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            TAG="v$VER.$RUN"
+            TITLE="bass-ffmpeg $VER (build $RUN)"
+          fi
+          gh release create "$TAG" "bass-ffmpeg-$VER.zip" --repo "$GITHUB_REPOSITORY" \
+            --title "$TITLE" \
+            --notes "Auto-built by GitHub Actions (run $RUN). Unzip and drop bass-ffmpeg.dll into the BASS plugins folder. All FFmpeg libraries are linked statically - bass.dll is the only dependency."
