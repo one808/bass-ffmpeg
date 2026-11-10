@@ -7,7 +7,7 @@ playback). Powered by a fully **static** FFmpeg build: the only dependency is
 
 Built for **Windows XP and later** (including old CPUs without SSE2).
 
-Companion to [xmp-ffmpeg](https://github.com/one808/xmp-ffmpeg-ng) (the XMPlay
+Companion to [xmp-ffmpeg](https://github.com/one808/xmp-ffmpeg) (the XMPlay
 version) — same FFmpeg engine, same build pipeline.
 
 ## Features
